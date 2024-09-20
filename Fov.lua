@@ -1,16 +1,27 @@
 -- Version Information
-local guiVersion = "v1.0.1"  -- Update this for each new version
-local patchNotes = [[
-Patch Notes for v1.0.1:
-- Added version system and patch notes.
-- Patch notes and version number now hide when collapsed.
-- Added auto-replacement of previous GUI when re-executed.
-]]
+local guiVersion = "v1.0.3"  -- Update this for each new version
+local patchNotesHistory = {
+    "v1.0.3: Patch Notes for v1.0.3:\n- Patch notes now show all updates and are scrollable.",
+    "v1.0.2: Patch Notes for v1.0.2:\n- Added delete button to remove GUI while keeping code executed.\n- FOV state and collapsed state are saved and restored upon re-execution.",
+    "v1.0.1: Patch Notes for v1.0.1:\n- Added a collapsible frame functionality.\n- FOV is adjustable between 0 and 300 using a slider.",
+    "v1.0.0: Initial release of the FOV GUI."
+}
 
 -- Function to remove old GUI if it exists
 local oldGui = game.Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FOVGui")
 if oldGui then
     oldGui:Destroy()
+end
+
+-- Local storage for settings
+local settings = {
+    fov = 70,
+    isCollapsed = false
+}
+
+-- Check if settings were saved previously
+if _G.FOVSettings then
+    settings = _G.FOVSettings  -- Load saved settings
 end
 
 -- Create the ScreenGui
@@ -30,19 +41,28 @@ frame.Parent = screenGui
 
 -- Create a Button to Collapse the Frame
 local collapseButton = Instance.new("TextButton")
-collapseButton.Size = UDim2.new(0, 50, 0, 25)
-collapseButton.Position = UDim2.new(1, -60, 0, 5) -- Top-right corner of the frame
+collapseButton.Size = UDim2.new(0, 30, 0, 20) -- Smaller size
+collapseButton.Position = UDim2.new(1, -50, 0, 5) -- Adjusted position
 collapseButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 collapseButton.Text = "-"
 collapseButton.TextColor3 = Color3.new(1, 1, 1)
 collapseButton.Parent = frame
+
+-- Create a Button to Delete the GUI
+local deleteButton = Instance.new("TextButton")
+deleteButton.Size = UDim2.new(0, 30, 0, 20) -- Smaller size
+deleteButton.Position = UDim2.new(1, -90, 0, 5) -- Next to the collapse button
+deleteButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+deleteButton.Text = "X" -- Changed text to "X"
+deleteButton.TextColor3 = Color3.new(1, 1, 1)
+deleteButton.Parent = frame
 
 -- Create a TextLabel to display FOV value
 local fovLabel = Instance.new("TextLabel")
 fovLabel.Size = UDim2.new(1, 0, 0, 30)
 fovLabel.Position = UDim2.new(0, 0, 0, 10)
 fovLabel.BackgroundTransparency = 1
-fovLabel.Text = "FOV: 70"
+fovLabel.Text = "FOV: " .. tostring(settings.fov)
 fovLabel.TextScaled = true
 fovLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 fovLabel.Parent = frame
@@ -90,14 +110,25 @@ patchNotesFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 patchNotesFrame.Visible = false
 patchNotesFrame.Parent = screenGui
 
--- Create a Scrollable Patch Notes TextLabel
-local patchNotesText = Instance.new("TextLabel")
-patchNotesText.Size = UDim2.new(1, 0, 1, 0)
-patchNotesText.BackgroundTransparency = 1
-patchNotesText.Text = patchNotes
-patchNotesText.TextWrapped = true
-patchNotesText.TextColor3 = Color3.fromRGB(255, 255, 255)
-patchNotesText.Parent = patchNotesFrame
+-- Create a Scrollable Frame for Patch Notes
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, 0, 1, -40) -- Scrollable area with space for close button
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 200 * #patchNotesHistory) -- Adjust CanvasSize based on patch notes count
+scrollingFrame.ScrollBarThickness = 10
+scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.Parent = patchNotesFrame
+
+-- Populate the ScrollingFrame with Patch Notes
+for i, note in ipairs(patchNotesHistory) do
+    local patchNoteLabel = Instance.new("TextLabel")
+    patchNoteLabel.Size = UDim2.new(1, -20, 0, 100) -- Each patch note entry is 100px tall
+    patchNoteLabel.Position = UDim2.new(0, 10, 0, (i - 1) * 110) -- Vertical stacking
+    patchNoteLabel.BackgroundTransparency = 1
+    patchNoteLabel.Text = note
+    patchNoteLabel.TextWrapped = true
+    patchNoteLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    patchNoteLabel.Parent = scrollingFrame
+end
 
 -- Create a Button to Close the Patch Notes Frame
 local closePatchNotesButton = Instance.new("TextButton")
@@ -113,6 +144,7 @@ local function updateFOV(value)
     local fov = math.clamp(math.floor(value), 0, 300) -- Using math.floor for integers
     game.Workspace.CurrentCamera.FieldOfView = fov
     fovLabel.Text = "FOV: " .. tostring(fov)
+    settings.fov = fov -- Save the FOV setting
 end
 
 -- Handle slider movement
@@ -138,14 +170,13 @@ local function onDrag(input)
         local deltaX = (input.Position.X - startX) * sensitivity
         startX = input.Position.X -- Update the start position
         local currentX = handle.Position.X.Scale * slider.AbsoluteSize.X
-        local newX = math.clamp(currentX + deltaX, 0, slider.AbsoluteSize.X)
+        local newX = math.clamp(currentX + deltaX, 0, slider.AbsoluteSize.X - handle.AbsoluteSize.X)
         handle.Position = UDim2.new(newX / slider.AbsoluteSize.X, 0, 0, 0)
-        local fovValue = (newX / slider.AbsoluteSize.X) * 300
-        updateFOV(fovValue)
+        updateFOV(newX / slider.AbsoluteSize.X * 300)
     end
 end
 
--- Bind the touch and mouse events
+-- Connect slider dragging to input events
 handle.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         startDrag(input)
@@ -158,42 +189,44 @@ handle.InputEnded:Connect(function(input)
     end
 end)
 
-userInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        onDrag(input)
-    end
-end)
+userInputService.InputChanged:Connect(onDrag)
 
--- Show Patch Notes when button is clicked
+-- Handle Patch Notes Button functionality
 patchNotesButton.MouseButton1Click:Connect(function()
     patchNotesFrame.Visible = true
 end)
 
--- Close Patch Notes when button is clicked
+-- Handle Close Button for Patch Notes
 closePatchNotesButton.MouseButton1Click:Connect(function()
     patchNotesFrame.Visible = false
 end)
 
--- Function to collapse or expand the frame
-local isCollapsed = false
-
+-- Handle Collapse Button functionality
+local isCollapsed = settings.isCollapsed
 collapseButton.MouseButton1Click:Connect(function()
     if isCollapsed then
-        frame:TweenSize(UDim2.new(0, 300, 0, 100), Enum.EasingDirection.Out, Enum.EasingStyle.Sine, 0.3)
+        frame.Size = UDim2.new(0, 300, 0, 100)
+        collapseButton.Text = "-"
         slider.Visible = true
         handle.Visible = true
-        collapseButton.Text = "-"
-        fovLabel.Position = UDim2.new(0, 0, 0, 10)
         versionLabel.Visible = true
         patchNotesButton.Visible = true
     else
-        frame:TweenSize(UDim2.new(0, 300, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Sine, 0.3)
+        frame.Size = UDim2.new(0, 300, 0, 40)
         slider.Visible = false
         handle.Visible = false
         collapseButton.Text = "+"
-        fovLabel.Position = UDim2.new(0, 0, 0, 5)
         versionLabel.Visible = false
         patchNotesButton.Visible = false
     end
     isCollapsed = not isCollapsed
+    settings.isCollapsed = isCollapsed -- Save the collapsed state
 end)
+
+-- Handle Delete Button functionality
+deleteButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy() -- Remove the GUI but keep the script running
+end)
+
+-- Save settings globally so they persist between executions
+_G.FOVSettings = settings
