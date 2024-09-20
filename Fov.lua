@@ -49,8 +49,8 @@ handle.Parent = slider
 
 -- FOV adjustment logic
 local function updateFOV(value)
-    -- Clamp FOV between 0 and 300
-    local fov = math.clamp(value, 0, 300)
+    -- Clamp FOV between 0 and 300, round to the nearest integer
+    local fov = math.clamp(math.floor(value), 0, 300) -- Using math.floor for integers
     
     -- Update the Camera FOV
     game.Workspace.CurrentCamera.FieldOfView = fov
