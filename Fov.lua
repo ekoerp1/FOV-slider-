@@ -123,12 +123,14 @@ collapseButton.MouseButton1Click:Connect(function()
         slider.Visible = true
         handle.Visible = true
         collapseButton.Text = "-"
+        fovLabel.Position = UDim2.new(0, 0, 0, 10) -- Reset FOV label position when expanded
     else
         -- Collapse the frame and hide the slider/handle
         frame:TweenSize(UDim2.new(0, 300, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Sine, 0.3)
         slider.Visible = false
         handle.Visible = false
         collapseButton.Text = "+"
+        fovLabel.Position = UDim2.new(0, 0, 0, 0) -- Adjust FOV label to be centered when collapsed
     end
     isCollapsed = not isCollapsed
 end)
